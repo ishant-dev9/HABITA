@@ -87,28 +87,32 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="flex h-screen bg-[#09090b] overflow-hidden">
+    <div className="flex flex-col md:flex-row h-screen bg-[#09090b] overflow-hidden">
       <Sidebar currentView={view} setView={setView} user={data.user} />
       
-      <main className="flex-1 overflow-y-auto p-4 md:p-8 relative">
+      <main className="flex-1 overflow-y-auto pt-6 pb-24 md:pb-8 px-4 md:px-12 relative">
         {showFirstVisit && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-            <div className="bg-zinc-900 border border-zinc-800 p-8 rounded-2xl max-w-sm text-center shadow-2xl animate-in fade-in zoom-in duration-300">
-              <h2 className="text-2xl font-bold mb-4">Welcome to HABITA</h2>
-              <p className="text-zinc-400 mb-6">Made with love by IKS ❤️</p>
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-6">
+            <div className="bg-zinc-900 border border-zinc-800 p-8 rounded-[2.5rem] max-w-sm text-center shadow-2xl animate-in fade-in zoom-in duration-300">
+              <div className="w-16 h-16 bg-zinc-100 rounded-2xl flex items-center justify-center text-3xl mb-6 mx-auto text-zinc-950">
+                H
+              </div>
+              <h2 className="text-2xl font-bold mb-2">Welcome to HABITA</h2>
+              <p className="text-zinc-400 mb-8 leading-relaxed">A sanctuary for self-discipline. No noise. Just consistency.</p>
               <button 
                 onClick={() => setShowFirstVisit(false)}
-                className="w-full bg-zinc-100 text-zinc-950 font-medium py-2 rounded-lg hover:bg-white transition-colors"
+                className="w-full bg-zinc-100 text-zinc-950 font-bold py-4 rounded-2xl hover:bg-white transition-all transform active:scale-95"
               >
                 Let's Build
               </button>
+              <p className="mt-6 text-[10px] text-zinc-600 uppercase tracking-widest font-bold">Made with ❤️ by IKS</p>
             </div>
           </div>
         )}
 
         {showEmergency && <EmergencyButton lastActivity={lastActivityDate} habits={data.habits} onClose={() => {}} />}
 
-        <div className="max-w-4xl mx-auto space-y-8 pb-12">
+        <div className="max-w-3xl mx-auto space-y-10">
           {view === 'dashboard' && (
             <Dashboard 
               data={data} 
