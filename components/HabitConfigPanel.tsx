@@ -17,6 +17,7 @@ export const HabitConfigPanel: React.FC<HabitConfigPanelProps> = ({ onSave, onCa
   const [selectedTimes, setSelectedTimes] = useState<string[]>(['Morning']);
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [endCondition, setEndCondition] = useState('Never');
+  const [customEndDate, setCustomEndDate] = useState('');
   const [areas, setAreas] = useState<string[]>([]);
   const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
   const [newCheckItem, setNewCheckItem] = useState('');
@@ -46,6 +47,7 @@ export const HabitConfigPanel: React.FC<HabitConfigPanelProps> = ({ onSave, onCa
       goal: { value: goalValue, unit: goalUnit, period: goalPeriod },
       timeOfDay: selectedTimes,
       endCondition,
+      customEndDate: endCondition === 'Custom date' ? customEndDate : undefined,
       areas,
       checklist
     };
@@ -186,6 +188,15 @@ export const HabitConfigPanel: React.FC<HabitConfigPanelProps> = ({ onSave, onCa
                 <option>After 21 days</option>
                 <option>Custom date</option>
               </select>
+              {endCondition === 'Custom date' && (
+                <input 
+                  type="date" 
+                  value={customEndDate}
+                  min={startDate}
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                  className="w-full mt-2 bg-zinc-900 border border-zinc-800 rounded-xl p-3 text-xs font-bold focus:outline-none focus:border-zinc-600 animate-in fade-in slide-in-from-top-1 duration-200"
+                />
+              )}
             </section>
           </div>
 

@@ -35,6 +35,7 @@ export interface Habit {
   };
   timeOfDay: string[]; // ['Morning', 'Afternoon', 'Evening']
   endCondition: string;
+  customEndDate?: string;
   areas: string[];
   checklist: ChecklistItem[];
 }
