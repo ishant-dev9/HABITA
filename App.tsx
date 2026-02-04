@@ -36,31 +36,58 @@ const App: React.FC = () => {
     setData(prev => ({ ...prev, habits: [...prev.habits, habit] }));
   };
 
-  const handleLogHabit = (habitId: string, status: 'completed' | 'skipped' | 'none') => {
+  /**
+   * Main Habit Log Handler (The "Big Button")
+   * If checklist exists, it acts as a Toggle All.
+   * If no checklist, it acts as a normal toggle.
+   */
+  const handleLogHabit = (habitId: string, requestedStatus: 'completed' | 'skipped' | 'none') => {
     const today = new Date().toISOString().split('T')[0];
     const habit = data.habits.find(h => h.id === habitId);
-    const existingLog = data.logs.find(l => l.date === today && l.habitId === habitId);
-    
-    const wasCompleted = existingLog?.status === 'completed';
-    const isCompleted = status === 'completed';
+    if (!habit) return;
 
+    const existingLog = data.logs.find(l => l.date === today && l.habitId === habitId);
+    const wasCompleted = existingLog?.status === 'completed';
+
+    let nextStatus = requestedStatus;
+    let nextCompletedItems: string[] = existingLog?.completedItems || [];
+
+    // Rule: If habit has checklist, the big button toggles "All" or "None"
+    if (habit.checklist && habit.checklist.length > 0) {
+      if (requestedStatus === 'completed') {
+        // Force complete all items
+        nextCompletedItems = habit.checklist.map(item => item.id);
+        nextStatus = 'completed';
+      } else if (requestedStatus === 'none') {
+        // Force uncomplete all items
+        nextCompletedItems = [];
+        nextStatus = 'none';
+      } else if (requestedStatus === 'skipped') {
+        // Keep partial progress but mark as skipped
+        nextStatus = 'skipped';
+      }
+    }
+
+    const isCompleted = nextStatus === 'completed';
+
+    // Update Logs
     const newLogs = data.logs.filter(l => !(l.date === today && l.habitId === habitId));
-    if (status !== 'none' || (existingLog?.completedItems && existingLog.completedItems.length > 0)) {
+    if (nextStatus !== 'none' || nextCompletedItems.length > 0) {
       newLogs.push({ 
         date: today, 
         habitId, 
-        status, 
-        completedItems: status === 'completed' && habit?.checklist ? habit.checklist.map(i => i.id) : (existingLog?.completedItems || [])
+        status: nextStatus, 
+        completedItems: nextCompletedItems 
       });
     }
 
-    // Update Discipline Score
+    // Update Discipline Score based on derived completion change
     const updatedHabits = data.habits.map(h => {
       if (h.id === habitId) {
         let increment = 0;
         if (!wasCompleted && isCompleted) increment = 1.5;
         if (wasCompleted && !isCompleted) increment = -1.5;
-        if (status === 'skipped' && existingLog?.status !== 'skipped') increment -= 0.5;
+        if (nextStatus === 'skipped' && existingLog?.status !== 'skipped') increment -= 0.5;
 
         return { ...h, disciplineScore: Math.max(0, Math.min(100, (h.disciplineScore || 0) + increment)) };
       }
@@ -70,6 +97,10 @@ const App: React.FC = () => {
     setData(prev => ({ ...prev, logs: newLogs, habits: updatedHabits }));
   };
 
+  /**
+   * Mini Checklist Toggle Handler
+   * Status is strictly DERIVED from checklist completion.
+   */
   const handleToggleCheckItem = (habitId: string, itemId: string) => {
     const today = new Date().toISOString().split('T')[0];
     const habit = data.habits.find(h => h.id === habitId);
@@ -84,15 +115,18 @@ const App: React.FC = () => {
       completedItems.push(itemId);
     }
 
+    // Strict derivation: Main habit is completed ONLY if all items are done
     const allDone = habit.checklist.length > 0 && habit.checklist.every(item => completedItems.includes(item.id));
     const wasCompleted = existingLog?.status === 'completed';
     const isCompleted = allDone;
 
+    // Determine status: If not all done, status is 'none' (or 'skipped' if it was previously skipped)
     const newStatus: 'completed' | 'skipped' | 'none' = allDone ? 'completed' : (existingLog?.status === 'skipped' ? 'skipped' : 'none');
 
     const newLogs = data.logs.filter(l => !(l.date === today && l.habitId === habitId));
     newLogs.push({ date: today, habitId, status: newStatus, completedItems });
 
+    // Update Discipline Score only on transition to/from "Full Completion"
     const updatedHabits = data.habits.map(h => {
       if (h.id === habitId) {
         let increment = 0;
