@@ -5,13 +5,14 @@ import { MOODS, MICRO_DARES, ANTI_MOTIVATION_LINES, NORMAL_LINES } from '../cons
 
 interface DashboardProps {
   data: AppData;
-  onLogHabit: (id: string, status: 'completed' | 'skipped') => void;
+  onLogHabit: (id: string, status: 'completed' | 'skipped' | 'none') => void;
+  onToggleCheckItem: (habitId: string, itemId: string) => void;
   onSetMood: (mood: Mood) => void;
   onCompleteDare: () => void;
   onToggleAntiMotivation: () => void;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ data, onLogHabit, onSetMood, onCompleteDare, onToggleAntiMotivation }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ data, onLogHabit, onToggleCheckItem, onSetMood, onCompleteDare, onToggleAntiMotivation }) => {
   const today = new Date().toISOString().split('T')[0];
   const hour = new Date().getHours();
   
@@ -42,7 +43,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, onLogHabit, onSetMoo
     
     let streak = 0;
     let checkDate = new Date();
-    const loggedToday = logs.some(l => l.date === today);
+    const loggedToday = logs.some(l => l.date === today && l.status === 'completed');
     if (!loggedToday) {
       checkDate.setDate(checkDate.getDate() - 1);
     }
@@ -55,6 +56,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, onLogHabit, onSetMoo
         streak++;
         checkDate.setDate(checkDate.getDate() - 1);
       } else if (log.status === 'skipped' || log.status === 'none') {
+        // If it was skipped today, streak is maintained but not incremented
+        if (logDateStr === today) continue;
         break;
       }
     }
@@ -85,7 +88,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, onLogHabit, onSetMoo
         <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 blur-3xl rounded-full -mr-16 -mt-16"></div>
         <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 mb-6">The Daily Work</h3>
         
-        <div className="grid gap-5">
+        <div className="grid gap-8">
           {data.habits.length === 0 ? (
             <div className="py-8 text-center bg-zinc-950/50 rounded-2xl border border-dashed border-zinc-800">
               <p className="text-zinc-500 italic text-sm">No habits in the vault yet.</p>
@@ -95,45 +98,71 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, onLogHabit, onSetMoo
               const log = todayLogs.find(l => l.habitId === habit.id);
               const streak = calculateStreak(habit.id);
               return (
-                <div key={habit.id} className="flex items-center justify-between">
-                  <div className="flex flex-col gap-0.5 max-w-[60%]">
-                    <span className={`text-base font-bold transition-all truncate ${log?.status === 'completed' ? 'text-zinc-600 line-through opacity-50' : 'text-zinc-100'}`}>
-                      {habit.name}
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-black text-zinc-600 uppercase">
-                        {streak}d Streak
+                <div key={habit.id} className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex flex-col gap-0.5 max-w-[60%]">
+                      <span className={`text-base font-bold transition-all truncate ${log?.status === 'completed' ? 'text-zinc-600 line-through opacity-50' : 'text-zinc-100'}`}>
+                        {habit.name}
                       </span>
-                      <span className="w-1 h-1 rounded-full bg-zinc-800"></span>
-                      <span className="text-[10px] font-black text-zinc-600 uppercase">
-                        Score: {Math.round(habit.disciplineScore || 0)}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-black text-zinc-600 uppercase">
+                          {streak}d Streak
+                        </span>
+                        <span className="w-1 h-1 rounded-full bg-zinc-800"></span>
+                        <span className="text-[10px] font-black text-zinc-600 uppercase">
+                          Score: {Math.round(habit.disciplineScore || 0)}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex gap-3">
+                      <button 
+                        onClick={() => onLogHabit(habit.id, log?.status === 'completed' ? 'none' : 'completed')}
+                        className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all active:scale-90 ${
+                          log?.status === 'completed' 
+                            ? 'bg-emerald-500/10 text-emerald-500 ring-1 ring-emerald-500/20' 
+                            : 'bg-zinc-800 text-zinc-400 hover:text-zinc-100'
+                        }`}
+                      >
+                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                      </button>
+                      <button 
+                        disabled={log?.status === 'completed'}
+                        onClick={() => onLogHabit(habit.id, log?.status === 'skipped' ? 'none' : 'skipped')}
+                        className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all active:scale-90 ${
+                          log?.status === 'skipped' 
+                            ? 'bg-rose-500/10 text-rose-500 ring-1 ring-rose-500/20' 
+                            : 'bg-zinc-800 text-zinc-500 disabled:opacity-20'
+                        }`}
+                      >
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                      </button>
                     </div>
                   </div>
-                  <div className="flex gap-3">
-                    <button 
-                      disabled={!!log}
-                      onClick={() => onLogHabit(habit.id, 'completed')}
-                      className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all active:scale-90 ${
-                        log?.status === 'completed' 
-                          ? 'bg-emerald-500/10 text-emerald-500 ring-1 ring-emerald-500/20' 
-                          : 'bg-zinc-800 text-zinc-400 hover:text-zinc-100'
-                      }`}
-                    >
-                      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
-                    </button>
-                    <button 
-                      disabled={!!log}
-                      onClick={() => onLogHabit(habit.id, 'skipped')}
-                      className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all active:scale-90 ${
-                        log?.status === 'skipped' 
-                          ? 'bg-rose-500/10 text-rose-500 ring-1 ring-rose-500/20' 
-                          : 'bg-zinc-800 text-zinc-500'
-                      }`}
-                    >
-                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
-                    </button>
-                  </div>
+
+                  {/* Checklist Section */}
+                  {habit.checklist && habit.checklist.length > 0 && (
+                    <div className="ml-1 space-y-2.5 border-l-2 border-zinc-800/50 pl-4 animate-in fade-in duration-300">
+                      {habit.checklist.map(item => {
+                        const isItemDone = log?.completedItems?.includes(item.id);
+                        return (
+                          <button 
+                            key={item.id}
+                            onClick={() => onToggleCheckItem(habit.id, item.id)}
+                            className="flex items-center gap-3 w-full text-left group/item"
+                          >
+                            <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${isItemDone ? 'bg-zinc-100 border-zinc-100' : 'border-zinc-700 group-hover/item:border-zinc-500'}`}>
+                              {isItemDone && <svg className="w-3 h-3 text-zinc-950" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M5 13l4 4L19 7" /></svg>}
+                            </div>
+                            <span className={`text-[11px] font-bold uppercase tracking-wider transition-all ${isItemDone ? 'text-zinc-600 line-through' : 'text-zinc-400 group-hover/item:text-zinc-200'}`}>
+                              {item.text}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {/* Separator between habits */}
+                  <div className="h-px bg-zinc-800/30 w-full last:hidden" />
                 </div>
               );
             })

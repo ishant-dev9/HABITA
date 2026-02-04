@@ -36,15 +36,68 @@ const App: React.FC = () => {
     setData(prev => ({ ...prev, habits: [...prev.habits, habit] }));
   };
 
-  const handleLogHabit = (habitId: string, status: 'completed' | 'skipped') => {
+  const handleLogHabit = (habitId: string, status: 'completed' | 'skipped' | 'none') => {
     const today = new Date().toISOString().split('T')[0];
-    const newLogs = data.logs.filter(l => !(l.date === today && l.habitId === habitId));
-    newLogs.push({ date: today, habitId, status });
+    const habit = data.habits.find(h => h.id === habitId);
+    const existingLog = data.logs.find(l => l.date === today && l.habitId === habitId);
     
-    // Update Discipline Score (Invisible Progress Meter)
+    const wasCompleted = existingLog?.status === 'completed';
+    const isCompleted = status === 'completed';
+
+    const newLogs = data.logs.filter(l => !(l.date === today && l.habitId === habitId));
+    if (status !== 'none' || (existingLog?.completedItems && existingLog.completedItems.length > 0)) {
+      newLogs.push({ 
+        date: today, 
+        habitId, 
+        status, 
+        completedItems: status === 'completed' && habit?.checklist ? habit.checklist.map(i => i.id) : (existingLog?.completedItems || [])
+      });
+    }
+
+    // Update Discipline Score
     const updatedHabits = data.habits.map(h => {
       if (h.id === habitId) {
-        const increment = status === 'completed' ? 1.5 : -0.5;
+        let increment = 0;
+        if (!wasCompleted && isCompleted) increment = 1.5;
+        if (wasCompleted && !isCompleted) increment = -1.5;
+        if (status === 'skipped' && existingLog?.status !== 'skipped') increment -= 0.5;
+
+        return { ...h, disciplineScore: Math.max(0, Math.min(100, (h.disciplineScore || 0) + increment)) };
+      }
+      return h;
+    });
+
+    setData(prev => ({ ...prev, logs: newLogs, habits: updatedHabits }));
+  };
+
+  const handleToggleCheckItem = (habitId: string, itemId: string) => {
+    const today = new Date().toISOString().split('T')[0];
+    const habit = data.habits.find(h => h.id === habitId);
+    if (!habit) return;
+
+    const existingLog = data.logs.find(l => l.date === today && l.habitId === habitId);
+    let completedItems = [...(existingLog?.completedItems || [])];
+    
+    if (completedItems.includes(itemId)) {
+      completedItems = completedItems.filter(id => id !== itemId);
+    } else {
+      completedItems.push(itemId);
+    }
+
+    const allDone = habit.checklist.length > 0 && habit.checklist.every(item => completedItems.includes(item.id));
+    const wasCompleted = existingLog?.status === 'completed';
+    const isCompleted = allDone;
+
+    const newStatus: 'completed' | 'skipped' | 'none' = allDone ? 'completed' : (existingLog?.status === 'skipped' ? 'skipped' : 'none');
+
+    const newLogs = data.logs.filter(l => !(l.date === today && l.habitId === habitId));
+    newLogs.push({ date: today, habitId, status: newStatus, completedItems });
+
+    const updatedHabits = data.habits.map(h => {
+      if (h.id === habitId) {
+        let increment = 0;
+        if (!wasCompleted && isCompleted) increment = 1.5;
+        if (wasCompleted && !isCompleted) increment = -1.5;
         return { ...h, disciplineScore: Math.max(0, Math.min(100, (h.disciplineScore || 0) + increment)) };
       }
       return h;
@@ -117,6 +170,7 @@ const App: React.FC = () => {
             <Dashboard 
               data={data} 
               onLogHabit={handleLogHabit} 
+              onToggleCheckItem={handleToggleCheckItem}
               onSetMood={handleSetMood}
               onCompleteDare={() => setData(prev => ({ ...prev, microDareCompletedDate: new Date().toISOString().split('T')[0] }))}
               onToggleAntiMotivation={() => {

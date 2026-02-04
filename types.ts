@@ -44,6 +44,7 @@ export interface DailyLog {
   date: string; // ISO String (YYYY-MM-DD)
   habitId: string;
   status: 'completed' | 'skipped' | 'none';
+  completedItems?: string[]; // IDs of completed checklist items for this specific day
 }
 
 export interface MoodEntry {
