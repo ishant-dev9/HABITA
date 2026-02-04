@@ -11,13 +11,32 @@ export interface User {
   antiMotivation: boolean;
 }
 
+export interface ChecklistItem {
+  id: string;
+  text: string;
+  completed: boolean;
+}
+
 export interface Habit {
   id: string;
   name: string;
   description?: string;
   startDate: string;
   isPrivate: boolean;
-  disciplineScore: number; // For invisible progress meter
+  disciplineScore: number;
+  
+  // Advanced Config
+  frequency: 'Daily' | 'Weekly' | 'Monthly';
+  pattern: 'Every Day' | 'Custom';
+  goal: {
+    value: number;
+    unit: string;
+    period: string;
+  };
+  timeOfDay: string[]; // ['Morning', 'Afternoon', 'Evening']
+  endCondition: string;
+  areas: string[];
+  checklist: ChecklistItem[];
 }
 
 export interface DailyLog {
