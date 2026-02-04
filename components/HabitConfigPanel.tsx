@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { Habit, ChecklistItem } from '../types';
+import { GoogleGenAI, Type } from '@google/genai';
 
 interface HabitConfigPanelProps {
   onSave: (habit: Habit) => void;
@@ -21,6 +22,7 @@ export const HabitConfigPanel: React.FC<HabitConfigPanelProps> = ({ onSave, onCa
   const [areas, setAreas] = useState<string[]>([]);
   const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
   const [newCheckItem, setNewCheckItem] = useState('');
+  const [isMagicFilling, setIsMagicFilling] = useState(false);
 
   const toggleTime = (time: string) => {
     setSelectedTimes(prev => 
@@ -32,6 +34,55 @@ export const HabitConfigPanel: React.FC<HabitConfigPanelProps> = ({ onSave, onCa
     if (!newCheckItem.trim()) return;
     setChecklist([...checklist, { id: Math.random().toString(), text: newCheckItem, completed: false }]);
     setNewCheckItem('');
+  };
+
+  const handleMagicFill = async () => {
+    setIsMagicFilling(true);
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const prompt = name.trim() 
+        ? `Optimize this habit configuration for long-term success: "${name}". Suggest realistic goals and timing.`
+        : `Suggest a random high-impact "Habit of Excellence" for a high-performer. Include name, frequency, goal, and best time of day.`;
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              name: { type: Type.STRING, description: "Name of the habit" },
+              frequency: { type: Type.STRING, enum: ["Daily", "Weekly", "Monthly"] },
+              pattern: { type: Type.STRING, enum: ["Every Day", "Custom"] },
+              goalValue: { type: Type.NUMBER },
+              goalUnit: { type: Type.STRING, description: "Unit of measurement (e.g., mins, times, pages)" },
+              goalPeriod: { type: Type.STRING, enum: ["per day", "per week"] },
+              selectedTimes: { 
+                type: Type.ARRAY, 
+                items: { type: Type.STRING, enum: ["Morning", "Afternoon", "Evening"] } 
+              }
+            },
+            required: ["name", "frequency", "pattern", "goalValue", "goalUnit", "goalPeriod", "selectedTimes"]
+          }
+        }
+      });
+
+      const data = JSON.parse(response.text);
+      if (data) {
+        setName(data.name);
+        setFrequency(data.frequency);
+        setPattern(data.pattern);
+        setGoalValue(data.goalValue);
+        setGoalUnit(data.goalUnit);
+        setGoalPeriod(data.goalPeriod);
+        setSelectedTimes(data.selectedTimes);
+      }
+    } catch (error) {
+      console.error("Magic Fill failed:", error);
+    } finally {
+      setIsMagicFilling(false);
+    }
   };
 
   const handleSave = () => {
@@ -79,7 +130,13 @@ export const HabitConfigPanel: React.FC<HabitConfigPanelProps> = ({ onSave, onCa
           <section className="space-y-3">
             <div className="flex justify-between items-end">
               <label className="text-[10px] font-black uppercase text-zinc-600 tracking-widest">Identity</label>
-              <button className="text-[10px] font-black text-indigo-500 uppercase tracking-widest hover:text-indigo-400">✨ Magic Fill</button>
+              <button 
+                onClick={handleMagicFill}
+                disabled={isMagicFilling}
+                className={`text-[10px] font-black uppercase tracking-widest transition-all ${isMagicFilling ? 'text-zinc-500 animate-pulse cursor-wait' : 'text-indigo-500 hover:text-indigo-400'}`}
+              >
+                {isMagicFilling ? '✨ Manifesting...' : '✨ Magic Fill'}
+              </button>
             </div>
             <input 
               type="text" 
@@ -121,7 +178,7 @@ export const HabitConfigPanel: React.FC<HabitConfigPanelProps> = ({ onSave, onCa
               <input 
                 type="number" 
                 value={goalValue}
-                onChange={(e) => setGoalValue(parseInt(e.target.value))}
+                onChange={(e) => setGoalValue(parseInt(e.target.value) || 0)}
                 className="w-12 bg-transparent text-center font-black text-xl focus:outline-none" 
               />
               <select 
@@ -133,6 +190,7 @@ export const HabitConfigPanel: React.FC<HabitConfigPanelProps> = ({ onSave, onCa
                 <option>mins</option>
                 <option>liters</option>
                 <option>km</option>
+                <option>pages</option>
               </select>
               <select 
                 value={goalPeriod}
@@ -248,7 +306,7 @@ export const HabitConfigPanel: React.FC<HabitConfigPanelProps> = ({ onSave, onCa
           <button 
             type="button"
             onClick={handleSave}
-            disabled={!name}
+            disabled={!name || isMagicFilling}
             className="w-full bg-zinc-100 text-zinc-950 py-4 lg:py-5 rounded-2xl font-black uppercase tracking-widest shadow-xl disabled:opacity-20 transition-all active:scale-[0.98] hover:bg-white"
           >
             Forge Habit
