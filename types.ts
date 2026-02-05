@@ -25,6 +25,10 @@ export interface Habit {
   isPrivate: boolean;
   disciplineScore: number;
   
+  // UI State
+  isCollapsed?: boolean;
+  isHiddenFromFlow?: boolean;
+  
   // Advanced Config
   frequency: 'Daily' | 'Weekly' | 'Monthly';
   pattern: 'Every Day' | 'Custom';

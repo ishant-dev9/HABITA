@@ -36,6 +36,16 @@ const App: React.FC = () => {
     setData(prev => ({ ...prev, habits: [...prev.habits, habit] }));
   };
 
+  const handleToggleHabitProperty = (habitId: string, property: 'isCollapsed' | 'isHiddenFromFlow') => {
+    const updatedHabits = data.habits.map(h => {
+      if (h.id === habitId) {
+        return { ...h, [property]: !h[property] };
+      }
+      return h;
+    });
+    setData(prev => ({ ...prev, habits: updatedHabits }));
+  };
+
   /**
    * Main Habit Log Handler (The "Big Button")
    * If checklist exists, it acts as a Toggle All.
@@ -205,6 +215,8 @@ const App: React.FC = () => {
               data={data} 
               onLogHabit={handleLogHabit} 
               onToggleCheckItem={handleToggleCheckItem}
+              onToggleCollapse={(id) => handleToggleHabitProperty(id, 'isCollapsed')}
+              onHideFromFlow={(id) => handleToggleHabitProperty(id, 'isHiddenFromFlow')}
               onSetMood={handleSetMood}
               onCompleteDare={() => setData(prev => ({ ...prev, microDareCompletedDate: new Date().toISOString().split('T')[0] }))}
               onToggleAntiMotivation={() => {
@@ -218,6 +230,7 @@ const App: React.FC = () => {
               habits={data.habits} 
               onAdd={handleAddHabit} 
               onDelete={(id) => setData(prev => ({ ...prev, habits: prev.habits.filter(h => h.id !== id) }))}
+              onToggleHideFromFlow={(id) => handleToggleHabitProperty(id, 'isHiddenFromFlow')}
             />
           )}
           {view === 'analytics' && <Analytics data={data} />}

@@ -7,12 +7,23 @@ interface DashboardProps {
   data: AppData;
   onLogHabit: (id: string, status: 'completed' | 'skipped' | 'none') => void;
   onToggleCheckItem: (habitId: string, itemId: string) => void;
+  onToggleCollapse: (id: string) => void;
+  onHideFromFlow: (id: string) => void;
   onSetMood: (mood: Mood) => void;
   onCompleteDare: () => void;
   onToggleAntiMotivation: () => void;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ data, onLogHabit, onToggleCheckItem, onSetMood, onCompleteDare, onToggleAntiMotivation }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ 
+  data, 
+  onLogHabit, 
+  onToggleCheckItem, 
+  onToggleCollapse,
+  onHideFromFlow,
+  onSetMood, 
+  onCompleteDare, 
+  onToggleAntiMotivation 
+}) => {
   const today = new Date().toISOString().split('T')[0];
   const hour = new Date().getHours();
   
@@ -35,6 +46,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, onLogHabit, onToggle
   const todayLogs = data.logs.filter(l => l.date === today);
   const todayMood = data.moods.find(m => m.date === today)?.mood;
   const isDareDone = data.microDareCompletedDate === today;
+
+  // Filter out habits that are hidden from Flow
+  const visibleHabits = useMemo(() => 
+    data.habits.filter(h => !h.isHiddenFromFlow), 
+    [data.habits]
+  );
 
   const calculateStreak = (habitId: string) => {
     const logs = [...data.logs]
@@ -89,21 +106,47 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, onLogHabit, onToggle
         <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 mb-6">The Daily Work</h3>
         
         <div className="grid gap-8">
-          {data.habits.length === 0 ? (
+          {visibleHabits.length === 0 ? (
             <div className="py-8 text-center bg-zinc-950/50 rounded-2xl border border-dashed border-zinc-800">
-              <p className="text-zinc-500 italic text-sm">No habits in the vault yet.</p>
+              <p className="text-zinc-500 italic text-sm">No active habits in Flow.</p>
             </div>
           ) : (
-            data.habits.map(habit => {
+            visibleHabits.map(habit => {
               const log = todayLogs.find(l => l.habitId === habit.id);
               const streak = calculateStreak(habit.id);
+              const isCollapsed = !!habit.isCollapsed;
+
               return (
-                <div key={habit.id} className="space-y-4">
+                <div key={habit.id} className="space-y-4 group">
                   <div className="flex items-center justify-between">
                     <div className="flex flex-col gap-0.5 max-w-[60%]">
-                      <span className={`text-base font-bold transition-all truncate ${log?.status === 'completed' ? 'text-zinc-600 line-through opacity-50' : 'text-zinc-100'}`}>
-                        {habit.name}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-base font-bold transition-all truncate ${log?.status === 'completed' ? 'text-zinc-600 line-through opacity-50' : 'text-zinc-100'}`}>
+                          {habit.name}
+                        </span>
+                        <div className="flex gap-1.5 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
+                          {habit.checklist && habit.checklist.length > 0 && (
+                            <button 
+                              onClick={() => onToggleCollapse(habit.id)}
+                              className="text-zinc-600 hover:text-zinc-300 transition-colors"
+                              title={isCollapsed ? "Expand" : "Collapse"}
+                            >
+                              <svg className={`w-3.5 h-3.5 transform transition-transform ${isCollapsed ? '-rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </button>
+                          )}
+                          <button 
+                            onClick={() => onHideFromFlow(habit.id)}
+                            className="text-zinc-600 hover:text-zinc-300 transition-colors"
+                            title="Hide from Flow"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] font-black text-zinc-600 uppercase">
                           {streak}d Streak
@@ -140,7 +183,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, onLogHabit, onToggle
                   </div>
 
                   {/* Checklist Section */}
-                  {habit.checklist && habit.checklist.length > 0 && (
+                  {!isCollapsed && habit.checklist && habit.checklist.length > 0 && (
                     <div className="ml-1 space-y-2.5 border-l-2 border-zinc-800/50 pl-4 animate-in fade-in duration-300">
                       {habit.checklist.map(item => {
                         const isItemDone = log?.completedItems?.includes(item.id);
